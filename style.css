@@ -1,0 +1,99 @@
+/* --- Keep all your existing styles from the original style.css file --- */
+/* --- And add these new styles at the end --- */
+
+/* Modal for Chart */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 8% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+body.dark-mode .modal-content {
+    background-color: #444;
+    border-color: #666;
+}
+
+body.dark-mode .close-button {
+    color: #ccc;
+}
+
+body.dark-mode .close-button:hover,
+body.dark-mode .close-button:focus {
+    color: #fff;
+}
+
+
+/* Edit Category Button */
+.edit-category-btn {
+    background-color: #17a2b8; /* Info Blue */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+    margin: 0 5px 0 0; /* Override default button margin */
+}
+.edit-category-btn:hover {
+    background-color: #117a8b;
+}
+
+.category-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+/* Recurring Goal Styles */
+.recurring-goal-info {
+    background-color: #eaf6ff;
+    border-left: 4px solid #007bff;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+
+body.dark-mode .recurring-goal-info {
+    background-color: #3b506b;
+    border-left-color: #8cacec;
+}
+
+.recurring-goal-info p {
+    margin: 5px 0;
+}
