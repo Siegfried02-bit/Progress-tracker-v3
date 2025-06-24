@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progress Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="header-nav">
+    <button id="goalsButton" onclick="showView('goalsView')">Objectifs</button>
+    <button id="notesButton" onclick="showView('notesView')">Notes</button>
+    <button id="completedGoalsButton" onclick="showView('completedGoalsView')">Terminés</button>
+    <button id="categoriesButton" onclick="showView('categoriesView')">Catégories</button>
+    <button id="notificationsButton" onclick="showView('notificationsView')">Notifications</button>
+  </div>
+
+  <div id="goalsView" class="view">
+    <h1>Progress Tracker</h1>
+
+    <div class="main-content-flex">
+        <div class="left-panel">
+            <div class="add-goal-section">
+                <h2>Ajouter un nouvel objectif :</h2>
+                <label>Nom de l'objectif : <input type="text" id="newName"></label>
+                <span class="error-message" id="error-newName"></span><br>
+
+                <label>Type d'objectif :
+                    <select id="newGoalType" onchange="toggleGoalTypeFields()">
+                        <option value="numeric">Numérique (ex: lire X pages)</option>
+                        <option value="boolean">À faire (ex: terminer une tâche)</option>
+                        <option value="recurring">Récurrent (ex: faire du sport)</option>
+                    </select>
+                </label><br>
+
+                <div id="numericGoalFields">
+                    <label>Cible : <input type="number" id="newTarget" value="100" min="1"></label><br>
+                    <label>Progrès actuel : <input type="number" id="newProgress" value="0" min="0"></label><br>
+                </div>
+
+                <div id="recurringGoalFields" style="display: none;">
+                    <label>Fréquence :
+                        <select id="newRecurrenceType">
+                            <option value="daily">Quotidien</option>
+                            <option value="weekly">Hebdomadaire</option>
+                            <option value="monthly">Mensuel</option>
+                        </select>
+                    </label><br>
+                </div>
+
+                <label>Catégorie :
+                    <select id="newCategory"></select>
+                    <button onclick="openAddCategoryModal()">+</button>
+                </label><br>
+                <span class="error-message" id="error-newCategory"></span><br>
+
+                <button onclick="addGoal()">Ajouter l'objectif</button>
+            </div>
+
+            <div class="dark-mode-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="slider round"></span>
+                </label>
+                <span>Mode Sombre</span>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="goal-stats">
+                <h2>Statistiques :</h2>
+                <p>Objectifs Totaux : <span id="totalGoals">0</span></p>
+                <p>Objectifs Atteints : <span id="completedGoalsCount">0</span></p>
+                <p>Progrès Moyen : <span id="averageProgress">0%</span></p>
+            </div>
+
+            <div class="filter-sort-controls">
+                <label for="categoryFilter">Filtrer par catégorie:</label>
+                <select id="categoryFilter" onchange="renderGoals()">
+                    <option value="all">Toutes les catégories</option>
+                </select>
+
+                <label for="sortOrder">Trier par:</label>
+                <select id="sortOrder" onchange="renderGoals()">
+                    <option value="default">Défaut</option>
+                    <option value="nameAsc">Nom (A-Z)</option>
+                    <option value="nameDesc">Nom (Z-A)</option>
+                    <option value="progressAsc">Progrès (Croissant)</option>
+                    <option value="progressDesc">Progrès (Décroissant)</option>
+                </select>
+            </div>
+
+            <div id="goalList" class="goal-list">
+                </div>
+        </div>
+    </div>
+  </div>
+
+  <div id="notesView" class="view" style="display: none;">
+    <h1>Mes Notes</h1>
+    <div class="notes-container">
+        <textarea id="noteContent" placeholder="Écrivez vos notes ici..."></textarea>
+        <button onclick="saveNotes()">Sauvegarder les notes</button>
+    </div>
+  </div>
+
+  <div id="completedGoalsView" class="view" style="display: none;">
+      <h1>Objectifs Terminés</h1>
+      <div id="completedGoalList" class="goal-list">
+          </div>
+  </div>
+
+  <div id="categoriesView" class="view" style="display: none;">
+    <h1>Gestion des Catégories</h1>
+    <div class="add-category-section">
+        <h2>Ajouter une nouvelle catégorie :</h2>
+        <input type="text" id="newCategoryName" placeholder="Nom de la catégorie">
+        <button onclick="addCategory()">Ajouter</button>
+    </div>
+    <div id="categoryList" class="category-list">
+        </div>
+  </div>
+
+  <div id="notificationsView" class="view" style="display: none;">
+      <h1>Notifications</h1>
+      <div class="notification-section">
+          <h2>Planifier une notification :</h2>
+          <label>Titre : <input type="text" id="notificationTitle" value="Rappel Progress Tracker"></label><br>
+          <label>Message : <input type="text" id="notificationBody" value="N'oubliez pas de mettre à jour vos objectifs !"></label><br>
+          <label>Date : <input type="date" id="notificationDate"></label><br>
+          <label>Heure : <input type="time" id="notificationTime"></label><br>
+          <button onclick="scheduleNotification()">Planifier la notification</button>
+      </div>
+  </div>
+
+
+  <div id="addCategoryModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeAddCategoryModal()">&times;</span>
+      <h2>Ajouter une nouvelle catégorie</h2>
+      <input type="text" id="modalNewCategoryName" placeholder="Nom de la catégorie">
+      <button onclick="addNewCategoryFromModal()">Ajouter</button>
+    </div>
+  </div>
+
+  <div id="editCategoryModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="closeEditCategoryModal()">&times;</span>
+      <h2>Modifier la catégorie</h2>
+      <input type="text" id="modalEditCategoryName">
+      <button onclick="saveEditedCategory()">Sauvegarder</button>
+      <button onclick="deleteCategory()">Supprimer</button>
+    </div>
+  </div>
+
+  <div id="celebration-overlay" class="celebration-overlay">
+      <div class="celebration-message">Objectif Atteint ! 🎉</div>
+  </div>
+
+  <script>
+    let goals = [];
+    let categories = [];
+    let notes = "";
+    let editingCategoryIndex = -1; // To keep track of the category being edited
+
+    // --- Utility Functions ---
+    function generateId() {
+        return '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function saveGoals() {
+        localStorage.setItem('goals', JSON.stringify(goals));
+    }
+
+    function loadGoals() {
+        const storedGoals = localStorage.getItem('goals');
+        if (storedGoals) {
+            goals = JSON.parse(storedGoals);
+            // Ensure recurring goals have lastRecurrenceReset for proper daily reset
+            goals.forEach(goal => {
+                if (goal.goalType === 'recurring' && !goal.lastRecurrenceReset) {
+                    goal.lastRecurrenceReset = new Date().toDateString(); // Set to today if not present
+                }
+            });
+        }
+        loadCategories();
+        renderGoals();
+        updateStats();
+    }
+
+    function saveCategories() {
+        localStorage.setItem('categories', JSON.stringify(categories));
+    }
+
+    function loadCategories() {
+        const storedCategories = localStorage.getItem('categories');
+        if (storedCategories) {
+            categories = JSON.parse(storedCategories);
+        } else {
+            categories = ['Général', 'Personnel', 'Professionnel']; // Default categories
+        }
+        populateCategorySelects();
+    }
+
+    function populateCategorySelects() {
+        const newCategorySelect = document.getElementById('newCategory');
+        const categoryFilterSelect = document.getElementById('categoryFilter');
+
+        newCategorySelect.innerHTML = '';
+        categoryFilterSelect.innerHTML = '<option value="all">Toutes les catégories</option>';
+
+        categories.forEach(category => {
+            const option1 = document.createElement('option');
+            option1.value = category;
+            option1.textContent = category;
+            newCategorySelect.appendChild(option1);
+
+            const option2 = document.createElement('option');
+            option2.value = category;
+            option2.textContent = category;
+            categoryFilterSelect.appendChild(option2);
+        });
+    }
+
+    function addCategory() {
+        const newCategoryNameInput = document.getElementById('newCategoryName');
+        const categoryName = newCategoryNameInput.value.trim();
+        if (categoryName && !categories.includes(categoryName)) {
+            categories.push(categoryName);
+            saveCategories();
+            populateCategorySelects();
+            renderCategories();
+            newCategoryNameInput.value = '';
+        } else if (categoryName) {
+            alert('Cette catégorie existe déjà ou est vide.');
+        }
+    }
+
+    function openAddCategoryModal() {
+        document.getElementById('addCategoryModal').style.display = 'block';
+    }
+
+    function closeAddCategoryModal() {
+        document.getElementById('addCategoryModal').style.display = 'none';
+        document.getElementById('modalNewCategoryName').value = '';
+    }
+
+    function addNewCategoryFromModal() {
+        const modalNewCategoryNameInput = document.getElementById('modalNewCategoryName');
+        const categoryName = modalNewCategoryNameInput.value.trim();
+        if (categoryName && !categories.includes(categoryName)) {
+            categories.push(categoryName);
+            saveCategories();
+            populateCategorySelects();
+            modalNewCategoryNameInput.value = '';
+            closeAddCategoryModal();
+            renderCategories();
+        } else if (categoryName) {
+            alert('Cette catégorie existe déjà ou est vide.');
+        }
+    }
+
+    function openEditCategoryModal(index) {
+        editingCategoryIndex = index;
+        const modalEditCategoryNameInput = document.getElementById('modalEditCategoryName');
+        modalEditCategoryNameInput.value = categories[index];
+        document.getElementById('editCategoryModal').style.display = 'block';
+    }
+
+    function closeEditCategoryModal() {
+        document.getElementById('editCategoryModal').style.display = 'none';
+        editingCategoryIndex = -1;
+    }
+
+    function saveEditedCategory() {
+        if (editingCategoryIndex === -1) return;
+        const modalEditCategoryNameInput = document.getElementById('modalEditCategoryName');
+        const newName = modalEditCategoryNameInput.value.trim();
+
+        if (newName && !categories.includes(newName)) {
+            const oldName = categories[editingCategoryIndex];
+            categories[editingCategoryIndex] = newName;
+
+            // Update goals with the new category name
+            goals.forEach(goal => {
+                if (goal.category === oldName) {
+                    goal.category = newName;
+                }
+            });
+
+            saveCategories();
+            saveGoals();
+            populateCategorySelects();
+            renderCategories();
+            renderGoals(); // Re-render goals to reflect category change
+            closeEditCategoryModal();
+        } else if (newName) {
+            alert('Cette catégorie existe déjà ou est vide.');
+        }
+    }
+
+    function deleteCategory() {
+        if (editingCategoryIndex === -1) return;
+        const categoryToDelete = categories[editingCategoryIndex];
+
+        // Check if any goals are associated with this category
+        const goalsInThisCategory = goals.filter(goal => goal.category === categoryToDelete);
+        if (goalsInThisCategory.length > 0) {
+            const confirmDelete = confirm(`Cette catégorie contient ${goalsInThisCategory.length} objectifs. Voulez-vous vraiment la supprimer ? Les objectifs associés n'auront plus de catégorie.`);
+            if (!confirmDelete) {
+                return;
+            }
+            // Remove category from associated goals
+            goalsInThisCategory.forEach(goal => {
+                goal.category = 'Non catégorisé'; // Assign a default or 'None' category
+            });
+        }
+
+        categories.splice(editingCategoryIndex, 1);
+        saveCategories();
+        saveGoals(); // Save goals after updating their categories
+        populateCategorySelects();
+        renderCategories();
+        renderGoals(); // Re-render goals to reflect category change
+        closeEditCategoryModal();
+    }
+
+    function loadNotes() {
+        const storedNotes = localStorage.getItem('notes');
+        if (storedNotes) {
+            notes = storedNotes;
+            document.getElementById('noteContent').value = notes;
+        }
+    }
+
+    function saveNotes() {
+        notes = document.getElementById('noteContent').value;
+        localStorage.setItem('notes', notes);
+        alert('Notes sauvegardées !');
+    }
+
+    function showView(viewId) {
+        document.querySelectorAll('.view').forEach(view => {
+            view.style.display = 'none';
+        });
+        document.getElementById(viewId).style.display = 'block';
+
+        document.querySelectorAll('.header-nav button').forEach(button => {
+            button.classList.remove('active');
+        });
+        document.getElementById(viewId.replace('View', 'Button')).classList.add('active');
+
+        if (viewId === 'goalsView') {
+            renderGoals(); // Ensure goals are re-rendered when switching back
+        } else if (viewId === 'completedGoalsView') {
+            renderCompletedGoals();
+        } else if (viewId === 'categoriesView') {
+            renderCategories();
+        }
+    }
+
+    function toggleGoalTypeFields() {
+        const goalType = document.getElementById('newGoalType').value;
+        const numericFields = document.getElementById('numericGoalFields');
+        const recurringFields = document.getElementById('recurringGoalFields');
+
+        numericFields.style.display = 'none';
+        recurringFields.style.display = 'none';
+
+        if (goalType === 'numeric') {
+            numericFields.style.display = 'block';
+        } else if (goalType === 'recurring') {
+            recurringFields.style.display = 'block';
+        }
+    }
+
+    function displayCelebration() {
+        const overlay = document.getElementById('celebration-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 3000); // Hide after 3 seconds
+    }
+
+
+    // --- Goal Management Functions ---
+    function addGoal() {
+        const name = document.getElementById('newName').value.trim();
+        const goalType = document.getElementById('newGoalType').value;
+        const category = document.getElementById('newCategory').value;
+
+        // Reset error messages
+        document.getElementById('error-newName').textContent = '';
+        document.getElementById('error-newCategory').textContent = '';
+
+        if (!name) {
+            document.getElementById('error-newName').textContent = 'Le nom de l\'objectif est requis.';
+            return;
+        }
+        if (!category) {
+            document.getElementById('error-newCategory').textContent = 'La catégorie est requise.';
+            return;
+        }
+
+        let newGoal = {
+            id: generateId(),
+            name: name,
+            goalType: goalType,
+            category: category,
+            completed: false // New property for archiving
+        };
+
+        if (goalType === 'numeric') {
+            const target = parseFloat(document.getElementById('newTarget').value);
+            const progress = parseFloat(document.getElementById('newProgress').value);
+
+            if (isNaN(target) || target <= 0) {
+                alert('La cible doit être un nombre positif.');
+                return;
+            }
+            if (isNaN(progress) || progress < 0) {
+                alert('Le progrès actuel doit être un nombre positif ou nul.');
+                return;
+            }
+
+            newGoal.target = target;
+            newGoal.progress = progress;
+            newGoal.progressHistory = [{ date: new Date().toLocaleString('fr-FR'), amount: progress }];
+        } else if (goalType === 'boolean') {
+            newGoal.completedBoolean = false; // For boolean goals, track completion separately
+        } else if (goalType === 'recurring') {
+            newGoal.recurrenceType = document.getElementById('newRecurrenceType').value;
+            newGoal.isDoneToday = false; // Track if done for the current recurrence period
+            newGoal.lastRecurrenceReset = new Date().toDateString(); // Store date of last reset
+            newGoal.recurrenceHistory = []; // To track daily/weekly/monthly completions
+        }
+
+        goals.push(newGoal);
+        saveGoals();
+        renderGoals();
+        updateStats();
+        document.getElementById('newName').value = '';
+        document.getElementById('newTarget').value = '100';
+        document.getElementById('newProgress').value = '0';
+        // Reset recurrence fields if needed
+        document.getElementById('newRecurrenceType').value = 'daily';
+    }
+
+    function addProgress(id) {
+        const goal = goals.find(g => g.id === id);
+        if (goal && goal.goalType === 'numeric') {
+            const amountToAdd = parseFloat(prompt('Combien de progrès voulez-vous ajouter ?'));
+            if (!isNaN(amountToAdd) && amountToAdd > 0) {
+                goal.progress += amountToAdd;
+                goal.progressHistory.push({ date: new Date().toLocaleString('fr-FR'), amount: amountToAdd });
+                if (goal.progress >= goal.target && !goal.completed) {
+                    goal.progress = goal.target; // Cap progress at target
+                    goal.completed = true;
+                    displayCelebration();
+                }
+                saveGoals();
+                renderGoals();
+                updateStats();
+            } else {
+                alert('Veuillez entrer un nombre positif valide.');
+            }
+        }
+    }
+
+    function markRecurringGoalDone(id) {
+        const goal = goals.find(g => g.id === id);
+        if (goal && goal.goalType === 'recurring') {
+            const today = new Date().toDateString();
+            if (goal.recurrenceType === 'daily') {
+                goal.isDoneToday = true;
+                goal.recurrenceHistory.push({ date: today, done: true });
+            } else if (goal.recurrenceType === 'weekly') {
+                const oneWeekAgo = new Date();
+                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                const lastWeekEntries = goal.recurrenceHistory.filter(entry => new Date(entry.date) > oneWeekAgo);
+                if (lastWeekEntries.length === 0 || new Date(lastWeekEntries[lastWeekEntries.length - 1].date).toDateString() !== today) {
+                    goal.recurrenceHistory.push({ date: today, done: true });
+                }
+            } else if (goal.recurrenceType === 'monthly') {
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                const lastMonthEntries = goal.recurrenceHistory.filter(entry => new Date(entry.date) > oneMonthAgo);
+                if (lastMonthEntries.length === 0 || new Date(lastMonthEntries[lastMonthEntries.length - 1].date).toDateString() !== today) {
+                    goal.recurrenceHistory.push({ date: today, done: true });
+                }
+            }
+            goal.completed = true; // Mark as completed for the current period
+            displayCelebration();
+            saveGoals();
+            renderGoals();
+            updateStats();
+        }
+    }
+
+    function toggleBooleanGoal(id) {
+        const goal = goals.find(g => g.id === id);
+        if (goal && goal.goalType === 'boolean') {
+            goal.completedBoolean = !goal.completedBoolean;
+            goal.completed = goal.completedBoolean; // Sync completion status
+            if (goal.completed) {
+                displayCelebration();
+            }
+            saveGoals();
+            renderGoals();
+            updateStats();
+        }
+    }
+
+    function archiveGoal(id) {
+        const goalIndex = goals.findIndex(g => g.id === id);
+        if (goalIndex > -1) {
+            goals[goalIndex].completed = true;
+            saveGoals();
+            renderGoals();
+            updateStats();
+            renderCompletedGoals(); // Update completed goals view
+        }
+    }
+
+    function unarchiveGoal(id) {
+        const goalIndex = goals.findIndex(g => g.id === id);
+        if (goalIndex > -1) {
+            goals[goalIndex].completed = false;
+            saveGoals();
+            renderGoals();
+            updateStats();
+            renderCompletedGoals(); // Update completed goals view
+        }
+    }
+
+    function deleteGoal(id) {
+        if (confirm('Voulez-vous vraiment supprimer cet objectif ?')) {
+            goals = goals.filter(goal => goal.id !== id);
+            saveGoals();
+            renderGoals();
+            updateStats();
+            renderCompletedGoals(); // Update completed goals view
+        }
+    }
+
+    function updateStats() {
+        const activeGoals = goals.filter(goal => !goal.completed);
+        const completedActiveGoals = activeGoals.filter(goal => {
+            if (goal.goalType === 'numeric') {
+                return goal.progress >= goal.target;
+            } else if (goal.goalType === 'boolean') {
+                return goal.completedBoolean;
+            } else if (goal.goalType === 'recurring') {
+                 // For recurring, consider it completed for the period if isDoneToday is true
+                 return goal.isDoneToday;
+            }
+            return false;
+        });
+
+        document.getElementById('totalGoals').textContent = activeGoals.length;
+        document.getElementById('completedGoalsCount').textContent = completedActiveGoals.length;
+
+        let totalProgressPercentage = 0;
+        let numericGoalsCount = 0;
+        activeGoals.forEach(goal => {
+            if (goal.goalType === 'numeric' && goal.target > 0) {
+                totalProgressPercentage += (goal.progress / goal.target) * 100;
+                numericGoalsCount++;
+            }
+        });
+
+        const averageProgress = numericGoalsCount > 0 ? (totalProgressPercentage / numericGoalsCount).toFixed(2) : 0;
+        document.getElementById('averageProgress').textContent = `${averageProgress}%`;
+    }
+
+    function renderGoals() {
+        const goalList = document.getElementById('goalList');
+        goalList.innerHTML = '';
+
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const sortOrder = document.getElementById('sortOrder').value;
+
+        let filteredGoals = goals.filter(goal => !goal.completed);
+
+        if (categoryFilter !== 'all') {
+            filteredGoals = filteredGoals.filter(goal => goal.category === categoryFilter);
+        }
+
+        // Apply sorting
+        filteredGoals.sort((a, b) => {
+            if (sortOrder === 'nameAsc') return a.name.localeCompare(b.name);
+            if (sortOrder === 'nameDesc') return b.name.localeCompare(a.name);
+            if (sortOrder === 'progressAsc' && a.goalType === 'numeric' && b.goalType === 'numeric') {
+                return (a.progress / a.target) - (b.progress / b.target);
+            }
+            if (sortOrder === 'progressDesc' && a.goalType === 'numeric' && b.goalType === 'numeric') {
+                return (b.progress / b.target) - (a.progress / a.target);
+            }
+            return 0; // Default or other types
+        });
+
+
+        if (filteredGoals.length === 0) {
+            goalList.innerHTML = '<p>Aucun objectif à afficher. Ajoutez-en un nouveau !</p>';
+            return;
+        }
+
+        // Handle recurring goal reset
+        filteredGoals.forEach(goal => {
+            if (goal.goalType === 'recurring') {
+                const today = new Date();
+                const lastResetDate = new Date(goal.lastRecurrenceReset);
+                let shouldReset = false;
+
+                if (goal.recurrenceType === 'daily' && today.toDateString() !== lastResetDate.toDateString()) {
+                    shouldReset = true;
+                } else if (goal.recurrenceType === 'weekly' && today.getDay() === 0 && today.toDateString() !== lastResetDate.toDateString()) { // Reset on Sunday
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    if (lastResetDate < oneWeekAgo) { // Ensure it resets only once per week
+                        shouldReset = true;
+                    }
+                } else if (goal.recurrenceType === 'monthly' && today.getDate() === 1 && today.toDateString() !== lastResetDate.toDateString()) { // Reset on 1st of month
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                     if (lastResetDate < oneMonthAgo) { // Ensure it resets only once per month
+                        shouldReset = true;
+                    }
+                }
+
+                if (shouldReset) {
+                    goal.isDoneToday = false;
+                    goal.lastRecurrenceReset = today.toDateString();
+                    goal.completed = false; // Mark as not completed for the new period
+                }
+            }
+        });
+        saveGoals(); // Save any changes from recurring goal resets
+
+        filteredGoals.forEach(goal => {
+            const goalItem = document.createElement('div');
+            goalItem.className = 'goal-item';
+
+            let progressDisplay = '';
+            let progressBar = '';
+            let actions = '';
+            let historySection = '';
+            let chartSection = '';
+
+            if (goal.goalType === 'numeric') {
+                const percentage = goal.target > 0 ? ((goal.progress / goal.target) * 100).toFixed(2) : 0;
+                progressDisplay = `<p>Progrès: ${goal.progress} / ${goal.target} (${percentage}%)</p>`;
+                progressBar = `<div class="progress-bar-container"><div class="progress-bar" style="width: ${percentage > 100 ? 100 : percentage}%;"></div></div>`;
+                actions = `<button onclick="addProgress('${goal.id}')">Ajouter Progrès</button>`;
+
+                // Progress History Display
+                historySection = `
+                    <div class="progress-history">
+                        <h3>Historique de Progrès</h3>
+                        <ul>
+                            ${goal.progressHistory.map(entry => `<li>${entry.date}: +${entry.amount}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+
+                // Chart Section
+                chartSection = `
+                    <div class="chart-container">
+                        <canvas id="chart-${goal.id}"></canvas>
+                    </div>
+                `;
+                 // Render chart after element is in DOM
+                 setTimeout(() => renderChart(goal), 0);
+
+            } else if (goal.goalType === 'boolean') {
+                progressDisplay = `<p>Statut: ${goal.completedBoolean ? 'Terminé' : 'Non Terminé'}</p>`;
+                actions = `
+                    <button onclick="toggleBooleanGoal('${goal.id}')">
+                        ${goal.completedBoolean ? 'Marquer Non Terminé' : 'Marquer Terminé'}
+                    </button>
+                `;
+            } else if (goal.goalType === 'recurring') {
+                const doneStatus = goal.isDoneToday ? 'Fait pour aujourd\'hui' : 'Non fait';
+                progressDisplay = `<p>Type: ${goal.recurrenceType} - Statut: ${doneStatus}</p>`;
+                actions = `
+                    <button ${goal.isDoneToday ? 'disabled' : ''} onclick="markRecurringGoalDone('${goal.id}')">
+                        ${goal.isDoneToday ? 'Fait' : 'Marquer comme Fait'}
+                    </button>
+                `;
+                // Simple recurrence history display
+                historySection = `
+                    <div class="recurrence-history">
+                        <h3>Historique des récurrences</h3>
+                        <p>Dernière réinitialisation: ${new Date(goal.lastRecurrenceReset).toLocaleDateString('fr-FR')}</p>
+                        <ul>
+                            ${goal.recurrenceHistory.map(entry => `<li>${new Date(entry.date).toLocaleDateString('fr-FR')}: ${entry.done ? '✅' : '❌'}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            goalItem.innerHTML = `
+                <h2>${goal.name}</h2>
+                <p>Catégorie: ${goal.category}</p>
+                ${progressDisplay}
+                ${progressBar}
+                <div class="goal-actions">
+                    ${actions}
+                    <button onclick="archiveGoal('${goal.id}')" class="archive-button">Archiver</button>
+                    <button onclick="deleteGoal('${goal.id}')" class="delete-button">Supprimer</button>
+                </div>
+                ${historySection}
+                ${chartSection}
+            `;
+            goalList.appendChild(goalItem);
+        });
+    }
+
+    function renderCompletedGoals() {
+        const completedGoalList = document.getElementById('completedGoalList');
+        completedGoalList.innerHTML = '';
+
+        const completedGoals = goals.filter(goal => goal.completed);
+
+        if (completedGoals.length === 0) {
+            completedGoalList.innerHTML = '<p>Aucun objectif archivé pour le moment.</p>';
+            return;
+        }
+
+        completedGoals.forEach(goal => {
+            const goalItem = document.createElement('div');
+            goalItem.className = 'goal-item completed-goal-item';
+
+            let progressDisplay = '';
+            if (goal.goalType === 'numeric') {
+                progressDisplay = `<p>Cible: ${goal.target}, Atteint: ${goal.progress}</p>`;
+            } else if (goal.goalType === 'boolean') {
+                progressDisplay = `<p>Statut: Terminé</p>`;
+            } else if (goal.goalType === 'recurring') {
+                progressDisplay = `<p>Type: ${goal.recurrenceType} - Dernièrement Fait le: ${new Date(goal.lastRecurrenceReset).toLocaleDateString('fr-FR')}</p>`;
+            }
+
+
+            goalItem.innerHTML = `
+                <h2>${goal.name} (Terminé)</h2>
+                <p>Catégorie: ${goal.category}</p>
+                ${progressDisplay}
+                <div class="goal-actions">
+                    <button onclick="unarchiveGoal('${goal.id}')">Désarchiver</button>
+                    <button onclick="deleteGoal('${goal.id}')" class="delete-button">Supprimer</button>
+                </div>
+            `;
+            completedGoalList.appendChild(goalItem);
+        });
+    }
+
+    function renderCategories() {
+        const categoryListDiv = document.getElementById('categoryList');
+        categoryListDiv.innerHTML = '';
+
+        if (categories.length === 0) {
+            categoryListDiv.innerHTML = '<p>Aucune catégorie pour le moment.</p>';
+            return;
+        }
+
+        const ul = document.createElement('ul');
+        categories.forEach((category, index) => {
+            const li = document.createElement('li');
+            const goalsInCategory = goals.filter(goal => goal.category === category).length;
+            li.innerHTML = `
+                <span>${category} (${goalsInCategory} objectifs)</span>
+                <button onclick="openEditCategoryModal(${index})">Éditer</button>
+            `;
+            ul.appendChild(li);
+        });
+        categoryListDiv.appendChild(ul);
+    }
+
+    function renderChart(goal) {
+        const ctx = document.getElementById(`chart-${goal.id}`);
+        if (!ctx) return; // Element might not be in DOM yet or is in a hidden view
+
+        // Destroy existing chart if it exists to prevent re-rendering issues
+        if (Chart.getChart(ctx)) {
+            Chart.getChart(ctx).destroy();
+        }
+
+        const labels = goal.progressHistory.map(entry => entry.date.split(' ')[0]); // Just date for labels
+        const data = [];
+        let cumulativeProgress = 0;
+        goal.progressHistory.forEach(entry => {
+            cumulativeProgress += entry.amount;
+            data.push(cumulativeProgress);
+        });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Progrès Cumulé',
+                    data: data,
+                    borderColor: '#4caf50',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Progrès'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: `Progression de "${goal.name}"`
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Notifications ---
+    async function scheduleNotification() {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+            alert('Votre navigateur ne supporte pas les notifications.');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('Permission de notification non accordée.');
+            return;
+        }
+
+        const title = document.getElementById('notificationTitle').value.trim();
+        const body = document.getElementById('notificationBody').value.trim();
+        const date = document.getElementById('notificationDate').value;
+        const time = document.getElementById('notificationTime').value;
+
+        if (!title || !body || !date || !time) {
+            alert('Veuillez remplir tous les champs de notification.');
+            return;
+        }
+
+        const scheduledDateTime = new Date(`${date}T${time}`);
+        const now = new Date();
+
+        if (scheduledDateTime <= now) {
+            alert('La date et l\'heure de la notification doivent être dans le futur.');
+            return;
+        }
+
+        const delay = scheduledDateTime.getTime() - now.getTime(); // Milliseconds until notification
+
+        if (delay < 0) { // Should not happen with the previous check, but good for safety
+            alert('Impossible de planifier une notification dans le passé.');
+            return;
+        }
+
+        // Send a message to the service worker to schedule the notification
+        navigator.serviceWorker.ready.then(registration => {
+            registration.active.postMessage({
+                action: 'scheduleNotification',
+                title: title,
+                body: body,
+                delay: delay
+            });
+            alert('Notification planifiée !');
+        }).catch(error => {
+            console.error('Service Worker not ready:', error);
+            alert('Erreur lors de la planification de la notification.');
+        });
+    }
+
+
+    // --- Initial setup on page load ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadGoals(); // Load goals and categories, renders goals, updates stats
+        loadNotes(); // Load notes and render them (even if not visible)
+        toggleGoalTypeFields(); // Set initial visibility for goal type fields
+
+        // Load dark mode preference
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('darkModeToggle').checked = true;
+        }
+
+        // Dark mode toggle functionality
+        document.getElementById('darkModeToggle').addEventListener('change', (event) => {
+            if (event.target.checked) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('darkMode', 'false');
+            }
+        });
+
+        // Show goals view by default and set active button
+        showView('goalsView');
+    });
+
+
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(registration => {
+            console.log('Service Worker registered with scope:', registration.scope);
+          })
+          .catch(error => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
