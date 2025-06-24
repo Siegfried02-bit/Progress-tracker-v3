@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progress Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header-nav">
+    <button id="goalsButton" onclick="showView('goalsView')">Objectifs</button>
+    <button id="notesButton" onclick="showView('notesView')">Notes</button>
+  </div>
+
+  <div id="goalsView" class="view">
+    <h1>Progress Tracker</h1>
+
+    <div class="main-content-flex">
+        <div class="left-panel">
+            <div class="add-goal-section">
+                <h2>Ajouter un nouvel objectif :</h2>
+                <label>Nom de l'objectif : <input type="text" id="newName"></label>
+                <span class="error-message" id="error-newName"></span><br>
+
+                <label>Type d'objectif :
+                    <select id="newGoalType" onchange="toggleGoalTypeFields()">
+                        <option value="numeric">Numérique (ex: lire X pages)</option>
+                        <option value="boolean">À faire (ex: terminer une tâche)</option>
+                    </select>
+                </label><br>
+
+                <div id="numericGoalFields">
+                    <label>Cible : <input type="number" id="newTarget"></label>
+                    <span class="error-message" id="error-newTarget"></span><br>
+                    <label>Unité (optionnel) : <input type="text" id="newUnit" placeholder="ex: pages, km, heures"></label><br>
+                </div>
+
+                <label>Catégorie :
+                    <div id="categorySelectContainer" style="display: flex; flex-wrap: wrap; align-items: center;">
+                        <select id="newCategory" style="flex-grow: 1; max-width: 250px; margin-right: 10px;"></select>
+                        <button onclick="addCustomCategory()">Ajouter une catégorie personnalisée</button>
+                    </div>
+                </label><br>
+                
+                <label>Date d'échéance (optionnel) : <input type="date" id="newDueDate"></label><br>
+
+                <button onclick="addGoal()">Ajouter un objectif</button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="statistics-section">
+                <h2>Statistiques des objectifs :</h2>
+                <p>Total d'objectifs : <span id="totalGoals">0</span></p>
+                <p>Objectifs complétés : <span id="completedGoals">0</span></p>
+                <p>Objectifs en attente : <span id="pendingGoals">0</span></p>
+                <h3>Objectifs par catégorie :</h3>
+                <ul id="goalsByCategory"></ul>
+                <h3>Statistiques de temps globales :</h3>
+                <p>Temps total passé sur les objectifs : <span id="totalTimeAllGoals">00:00:00</span></p>
+                <p>Temps passé aujourd'hui : <span id="timeSpentTodayAllGoals">00:00:00</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="manage-category-toggle-section">
+        <h2 onclick="toggleManageCategories()" style="cursor: pointer;">Gérer les catégories <span id="toggleManageCategoryArrow" class="arrow-down"></span></h2>
+        <div id="manageCategoryContent" style="display: none;">
+            <div id="categoryList"></div>
+        </div>
+    </div>
+
+    <div class="filter-sort-section">
+        <h2>Filtrer & trier les objectifs :</h2>
+        <label>Filtrer par catégorie :</label>
+        <div id="filterCategoryCheckboxes" class="category-checkboxes">
+            </div>
+        <label>Trier par :
+            <select id="sortBy" onchange="renderGoals()">
+                <option value="name">Nom</option>
+                <option value="progressAsc">Progression (Croissant)</option>
+                <option value="progressDesc">Progression (Décroissant)</option>
+                <option value="creationDate">Date de création</option>
+                <option value="dueDate">Date d'échéance</option>
+            </select>
+        </label>
+        <label>Rechercher : <input type="text" id="searchGoals" onkeyup="renderGoals()" placeholder="Rechercher des objectifs..."></label>
+    </div>
+
+    <div id="goalsContainer"></div>
+
+    <div class="daily-log-section">
+        <h2>Consultation du temps passé par jour :</h2>
+        <label>Sélectionnez une date : <input type="date" id="dailyLogDate"></label>
+        <button onclick="displayDailyLog()">Afficher les détails</button>
+        <div id="dailyLogDetails" class="daily-log-details" style="display:none;">
+            <h3>Détails pour la date sélectionnée : <span id="selectedDateDisplay"></span></h3>
+            <p>Temps total passé : <span id="selectedDateTotalTime">00:00:00</span></p>
+            <h4>Détail par objectif :</h4>
+            <ul id="selectedDateGoalsDetails"></ul>
+        </div>
+    </div>
+
+    <div class="utility-buttons">
+        <button onclick="toggleDarkMode()">Mode Sombre</button>
+        <button onclick="exportGoals()">Exporter les objectifs</button>
+        <input type="file" accept=".json" onchange="importGoals(event)">
+    </div>
+  </div>
+
+  <div id="notesView" class="view">
+    <h1>Mes Notes</h1>
+
+    <div class="add-note-section">
+        <h2>Ajouter une nouvelle note :</h2>
+        <label>Titre de la note : <input type="text" id="newNoteTitle"></label>
+        <span class="error-message" id="error-newNoteTitle"></span><br>
+        <label>Contenu de la note : <textarea id="newNoteContent"></textarea></label><br>
+        <label>Catégorie de la note :
+            <select id="newNoteCategory"></select>
+        </label><br>
+        <button onclick="addNote()">Ajouter la note</button>
+    </div>
+
+    <div class="filter-sort-section">
+        <h2>Filtrer & trier les notes :</h2>
+        <label>Filtrer par catégorie :
+          <select id="filterNoteCategory" onchange="renderNotes()">
+            <option value="all">Toutes</option>
+          </select>
+        </label>
+        <label>Rechercher : <input type="text" id="searchNotes" onkeyup="renderNotes()" placeholder="Rechercher des notes..."></label>
+    </div>
+
+    <div id="notesContainer"></div>
+  </div>
+
+
+  <div id="toastNotification" class="toast-notification"></div>
+  <div id="undoNotification" class="undo-notification">
+    Action annulée ! <button onclick="confirmUndo()">Confirmer</button>
+  </div>
+
+
+  <script>
+    let goals = [];
+    let categories = ['Sport', 'Travail', 'Personnel', 'Autre']; // Default categories
+    let notes = []; // Array for notes
+    let previousGoalsState = null;
+    let undoTimeout = null;
+    let overallDailyTimeLogs = {}; // NEW: Global object to store daily time logs for all goals
+
+    // --- Utility Functions ---
+    function formatTime(seconds) {
+        if (seconds < 0) seconds = 0;
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        return [h, m, s]
+            .map(v => v < 10 ? '0' + v : v)
+            .join(':');
+    }
+
+    function getTodayDateString() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // --- View Management ---
+    function showView(viewId) {
+        document.querySelectorAll('.view').forEach(view => {
+            view.style.display = 'none';
+            view.classList.remove('active');
+        });
+        document.querySelectorAll('.header-nav button').forEach(button => {
+            button.classList.remove('active');
+        });
+
+        const activeView = document.getElementById(viewId);
+        activeView.style.display = 'block';
+        activeView.classList.add('active');
+        
+        document.getElementById(viewId === 'goalsView' ? 'goalsButton' : 'notesButton').classList.add('active');
+
+
+        // Render content specific to the view
+        if (viewId === 'goalsView') {
+            loadGoals(); // Ensure goals are loaded and rendered
+        } else if (viewId === 'notesView') {
+            loadNotes(); // Ensure notes are loaded and rendered
+        }
+    }
+
+    // --- Goals Functions ---
+    function loadGoals() {
+      const savedGoals = localStorage.getItem('goals');
+      if (savedGoals) {
+        goals = JSON.parse(savedGoals);
+        // Initialize new timer properties for existing goals if they don't have them
+        goals.forEach(goal => {
+            if (typeof goal.isTimerRunning === 'undefined') goal.isTimerRunning = false;
+            if (typeof goal.timerStartTime === 'undefined') goal.timerStartTime = null;
+            if (typeof goal.totalTimeLogged === 'undefined') goal.totalTimeLogged = 0;
+            if (typeof goal.dailyTimeLogs === 'undefined') goal.dailyTimeLogs = {};
+        });
+      }
+      const savedCategories = localStorage.getItem('categories');
+      if (savedCategories) {
+        categories = JSON.parse(savedCategories);
+      }
+      const savedOverallDailyTimeLogs = localStorage.getItem('overallDailyTimeLogs');
+      if (savedOverallDailyTimeLogs) {
+          overallDailyTimeLogs = JSON.parse(savedOverallDailyTimeLogs);
+      }
+
+      populateCategories();
+      populateFilterCategories();
+      renderGoals();
+      updateStatistics();
+    }
+
+    function saveGoals() {
+      localStorage.setItem('goals', JSON.stringify(goals));
+      updateStatistics();
+    }
+
+    function saveCategories() {
+      localStorage.setItem('categories', JSON.stringify(categories));
+    }
+
+    // NEW: Save overall daily time logs
+    function saveOverallDailyTimeLogs() {
+        localStorage.setItem('overallDailyTimeLogs', JSON.stringify(overallDailyTimeLogs));
+    }
+
+    function populateCategories() {
+      const selectElement = document.getElementById('newCategory');
+      selectElement.innerHTML = ''; // Clear existing options
+      categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        selectElement.appendChild(option);
+      });
+      addCategoryDeleteButtons(); // Add delete buttons after populating
+      populateNoteCategories(); // Also populate for notes
+    }
+
+    function populateFilterCategories() {
+        const filterCategoryCheckboxesDiv = document.getElementById('filterCategoryCheckboxes');
+        filterCategoryCheckboxesDiv.innerHTML = ''; // Clear existing
+
+        const allCheckbox = document.createElement('label');
+        allCheckbox.className = 'checkbox-container';
+        allCheckbox.innerHTML = `Toutes
+            <input type="checkbox" value="all" checked onchange="toggleAllCategories(this)">
+            <span class="checkmark"></span>
+        `;
+        filterCategoryCheckboxesDiv.appendChild(allCheckbox);
+
+
+        categories.forEach(category => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-container';
+            label.innerHTML = `${category}
+                <input type="checkbox" value="${category}" onchange="renderGoals()">
+                <span class="checkmark"></span>
+            `;
+            filterCategoryCheckboxesDiv.appendChild(label);
+        });
+    }
+
+    function toggleAllCategories(checkbox) {
+        const checkboxes = document.querySelectorAll('#filterCategoryCheckboxes input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            if (cb.value !== 'all') {
+                cb.checked = checkbox.checked;
+            }
+        });
+        renderGoals();
+    }
+
+    function getSelectedCategories() {
+        const selected = [];
+        document.querySelectorAll('#filterCategoryCheckboxes input[type="checkbox"]:checked').forEach(cb => {
+            if (cb.value !== 'all') {
+                selected.push(cb.value);
+            }
+        });
+        return selected;
+    }
+
+
+    function addCategoryDeleteButtons() {
+        const categoryListDiv = document.getElementById('categoryList');
+        categoryListDiv.innerHTML = ''; // Clear existing list
+
+        categories.forEach(category => {
+            // Do not show delete button for default categories
+            if (['Sport', 'Travail', 'Personnel', 'Autre'].includes(category)) {
+                categoryListDiv.innerHTML += `<div class="category-list-item"><span>${category}</span></div>`;
+            } else {
+                categoryListDiv.innerHTML += `
+                    <div class="category-list-item">
+                        <span>${category}</span>
+                        <button class="delete-category-btn" onclick="deleteCategory('${category}')">&times;</button>
+                    </div>
+                `;
+            }
+        });
+    }
+
+
+    function deleteCategory(categoryToDelete) {
+        if (['Sport', 'Travail', 'Personnel', 'Autre'].includes(categoryToDelete)) {
+            showToast('Les catégories par défaut ne peuvent pas être supprimées.', 'warning');
+            return;
+        }
+
+        if (confirm(`Voulez-vous vraiment supprimer la catégorie "${categoryToDelete}" ? Cela ne supprimera pas les objectifs, mais leur catégorie sera marquée comme 'Autre'.`)) {
+            // Filter out the category from the main categories array
+            categories = categories.filter(cat => cat !== categoryToDelete);
+            saveCategories();
+
+            // Update goals that used this category to 'Autre'
+            goals.forEach(goal => {
+                if (goal.category === categoryToDelete) {
+                    goal.category = 'Autre';
+                }
+            });
+            saveGoals();
+
+            // Update notes that used this category to 'Autre'
+            notes.forEach(note => {
+                if (note.category === categoryToDelete) {
+                    note.category = 'Autre';
+                }
+            });
+            saveNotes();
+
+
+            populateCategories(); // Re-populate select dropdown
+            populateFilterCategories(); // Re-populate filter dropdown
+            populateNoteCategories(); // Re-populate for notes
+            renderGoals(); // Re-render goals to reflect category change
+            renderNotes(); // Re-render notes to reflect category change
+            showToast(`Catégorie "${categoryToDelete}" supprimée. Les objectifs et notes associés sont maintenant dans la catégorie 'Autre'.`, 'info');
+        }
+    }
+
+    function toggleManageCategories() {
+        const content = document.getElementById('manageCategoryContent');
+        const arrow = document.getElementById('toggleManageCategoryArrow');
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            arrow.classList.remove('arrow-down');
+            arrow.classList.add('arrow-up');
+        } else {
+            content.style.display = 'none';
+            arrow.classList.remove('arrow-up');
+            arrow.classList.add('arrow-down');
+        }
+    }
+
+
+    function validateForm() {
+        let isValid = true;
+        const nameInput = document.getElementById('newName');
+        const targetInput = document.getElementById('newTarget');
+        const nameError = document.getElementById('error-newName');
+        const targetError = document.getElementById('error-newTarget');
+        const goalType = document.getElementById('newGoalType').value;
+
+        nameError.textContent = '';
+        nameInput.classList.remove('is-invalid');
+        targetError.textContent = '';
+        targetInput.classList.remove('is-invalid');
+
+        if (!nameInput.value.trim()) {
+            nameError.textContent = 'Le nom de l\'objectif ne peut pas être vide.';
+            nameInput.classList.add('is-invalid');
+            isValid = false;
+        }
+
+        if (goalType === 'numeric') {
+            const target = parseInt(targetInput.value);
+            if (isNaN(target) || target <= 0) {
+                targetError.textContent = 'La cible doit être un nombre positif.';
+                targetInput.classList.add('is-invalid');
+                isValid = false;
+            }
+        }
+        return isValid;
+    }
+
+    function addCustomCategory() {
+      const customCategory = prompt("Entrez le nom de la nouvelle catégorie :");
+      if (customCategory && customCategory.trim() !== '') {
+        const trimmedCategory = customCategory.trim();
+        if (!categories.includes(trimmedCategory)) {
+          categories.push(trimmedCategory);
+          saveCategories();
+          populateCategories();
+          populateFilterCategories();
+          document.getElementById('newCategory').value = trimmedCategory; // Select the new category
+          showToast(`Catégorie "${trimmedCategory}" ajoutée !`, 'success');
+        } else {
+          showToast("La catégorie existe déjà !", 'warning');
+        }
+      }
+    }
+
+    function addGoal() {
+      if (!validateForm()) {
+        showToast('Veuillez corriger les erreurs du formulaire.', 'error');
+        return;
+      }
+
+      const name = document.getElementById('newName').value.trim();
+      const targetInput = document.getElementById('newTarget');
+      const unitInput = document.getElementById('newUnit');
+      const category = document.getElementById('newCategory').value;
+      const dueDate = document.getElementById('newDueDate').value;
+      const goalType = document.getElementById('newGoalType').value;
+
+      let goalData = {
+          name,
+          category,
+          creationDate: new Date().toISOString(),
+          dueDate: dueDate || null,
+          type: goalType,
+          reminderTime: null,
+          reminderDate: null,
+          isTimerRunning: false, // NEW
+          timerStartTime: null,  // NEW
+          totalTimeLogged: 0,    // NEW
+          dailyTimeLogs: {}      // NEW
+      };
+
+      if (goalType === 'numeric') {
+          goalData.target = parseInt(targetInput.value);
+          goalData.current = 0;
+          goalData.unit = unitInput.value.trim();
+          goalData.history = [];
+      } else { // boolean
+          goalData.completed = false;
+          goalData.history = [];
+      }
+
+      goals.push(goalData);
+      saveGoals();
+      renderGoals();
+      
+      document.getElementById('newName').value = '';
+      targetInput.value = '';
+      unitInput.value = '';
+      document.getElementById('newCategory').selectedIndex = 0;
+      document.getElementById('newDueDate').value = '';
+      document.getElementById('newGoalType').value = 'numeric'; // Reset to default
+      toggleGoalTypeFields(); // Adjust fields for numeric
+      showToast('Objectif ajouté avec succès !', 'success');
+    }
+
+    function updateGoal(index) {
+        previousGoalsState = JSON.parse(JSON.stringify(goals)); // Deep copy
+        const goal = goals[index];
+        if (goal.type === 'numeric') {
+            const progressInput = document.getElementById(`progress-${index}`);
+            const progress = parseInt(progressInput.value);
+            if (!isNaN(progress) && progress !== 0) {
+                goal.current += progress;
+                if (goal.current > goal.target) {
+                    goal.current = goal.target;
+                }
+                goal.history.push({ date: new Date().toLocaleString(), value: progress });
+                saveGoals();
+                renderGoals();
+                progressInput.value = '';
+                if (goal.current >= goal.target) {
+                    const goalElement = document.querySelector(`.goal[data-index="${index}"]`);
+                    if (goalElement) triggerConfetti(goalElement);
+                    showToast(`Objectif "${goal.name}" complété !`, 'success');
+                }
+            } else {
+                showToast('Veuillez entrer un nombre valide pour la progression.', 'error');
+            }
+        } else { // boolean
+            goal.completed = !goal.completed;
+            goal.history.push({ date: new Date().toLocaleString(), value: goal.completed ? 'Complété' : 'Non coché' });
+            saveGoals();
+            renderGoals();
+            if (goal.completed) {
+                const goalElement = document.querySelector(`.goal[data-index="${index}"]`);
+                if (goalElement) triggerConfetti(goalElement);
+                showToast(`Objectif "${goal.name}" marqué comme complété !`, 'success');
+            } else {
+                showToast(`Objectif "${goal.name}" marqué comme incomplet.`, 'info');
+            }
+        }
+        showUndoNotification();
+    }
+
+    function resetGoal(index) {
+      if (confirm('Êtes-vous sûr de vouloir réinitialiser la progression de cet objectif à zéro ?')) {
+        previousGoalsState = JSON.parse(JSON.stringify(goals)); // Deep copy
+        goals[index].current = 0;
+        goals[index].history.push({ date: new Date().toLocaleString(), value: 'Réinitialisé' });
+        saveGoals();
+        renderGoals();
+        showToast('Progression de l\'objectif réinitialisée !', 'info');
+        showUndoNotification();
+      }
+    }
+
+    function editGoal(index) {
+      previousGoalsState = JSON.parse(JSON.stringify(goals)); // Deep copy
+      const goal = goals[index];
+      const newName = prompt("Entrez le nouveau nom pour " + goal.name + ":", goal.name);
+      if (newName !== null && newName.trim() !== '') {
+        goal.name = newName.trim();
+      }
+
+      if (goal.type === 'numeric') {
+        const newTarget = prompt("Entrez la nouvelle cible pour " + goal.name + " (actuel: " + goal.target + "):", goal.target);
+        if (newTarget !== null && !isNaN(parseInt(newTarget)) && parseInt(newTarget) > 0) {
+          goal.target = parseInt(newTarget);
+        }
+        const newUnit = prompt("Entrez la nouvelle unité pour " + goal.name + " (actuel: " + (goal.unit || '') + "):", goal.unit || '');
+        if (newUnit !== null) {
+            goal.unit = newUnit.trim();
+        }
+      } else { // boolean type
+          const newCompleted = confirm(`Marquer "${goal.name}" comme complété ? État actuel: ${goal.completed ? 'Complété' : 'Incomplet'}`);
+          if (newCompleted !== goal.completed) {
+              goal.completed = newCompleted;
+              goal.history.push({ date: new Date().toLocaleString(), value: goal.completed ? 'Complété (via modification)' : 'Non coché (via modification)' });
+          }
+      }
+
+      const newCategory = prompt("Entrez la nouvelle catégorie pour " + goal.name + " (actuel: " + goal.category + "). Existantes: " + categories.join(', ') + " ou tapez une nouvelle:", goal.category);
+      if (newCategory !== null && newCategory.trim() !== '') {
+        const trimmedCategory = newCategory.trim();
+        if (!categories.includes(trimmedCategory)) {
+          categories.push(trimmedCategory);
+          saveCategories();
+          populateCategories();
+          populateFilterCategories();
+          populateNoteCategories(); // Update for notes as well
+        }
+        goal.category = trimmedCategory;
+      }
+      
+      const newDueDate = prompt("Entrez la nouvelle date d'échéance pour " + goal.name + " (AAAA-MM-JJ) (actuel: " + (goal.dueDate || 'Aucune') + "):", goal.dueDate || '');
+      goal.dueDate = newDueDate ? newDueDate : null;
+
+
+      saveGoals();
+      renderGoals();
+      showToast('Objectif mis à jour !', 'info');
+      showUndoNotification();
+    }
+
+
+    function deleteGoal(index) {
+      if (confirm('Êtes-vous sûr de vouloir supprimer cet objectif ? Cette action ne peut pas être annulée.')) {
+        previousGoalsState = JSON.parse(JSON.stringify(goals)); // Deep copy
+        // Before deleting, stop timer if running
+        if (goals[index].isTimerRunning) {
+            stopGoalTimer(index); // This will save time logged before deletion
+        }
+        goals.splice(index, 1);
+        saveGoals();
+        renderGoals();
+        showToast('Objectif supprimé !', 'warning');
+        showUndoNotification();
+      }
+    }
+
+    // NEW: Timer Functions for Goals
+    let goalTimers = {}; // To store setInterval IDs for live updates
+
+    function startGoalTimer(index) {
+        const goal = goals[index];
+        if (goal.isTimerRunning) {
+            showToast(`Le chronomètre pour "${goal.name}" est déjà en cours.`, 'warning');
+            return;
+        }
+
+        goal.isTimerRunning = true;
+        goal.timerStartTime = Date.now();
+        saveGoals(); // Save the new timer state
+
+        // Update UI immediately
+        renderGoals();
+        showToast(`Chronomètre démarré pour "${goal.name}" !`, 'success');
+
+        // Optional: Update timer display every second (consider performance for many goals)
+        if (!goalTimers[index]) {
+            goalTimers[index] = setInterval(() => {
+                const elapsedSeconds = Math.floor((Date.now() - goal.timerStartTime) / 1000);
+                const currentGoalDiv = document.querySelector(`.goal[data-index="${index}"]`);
+                if (currentGoalDiv) {
+                    const timerDisplay = currentGoalDiv.querySelector('.current-timer-display');
+                    if (timerDisplay) {
+                        // This updates only the *current* running timer visually without re-rendering everything
+                        timerDisplay.textContent = `(En cours : ${formatTime(elapsedSeconds)})`;
+                    }
+                }
+            }, 1000);
+        }
+    }
+
+    function stopGoalTimer(index) {
+        const goal = goals[index];
+        if (!goal.isTimerRunning) {
+            showToast(`Le chronomètre pour "${goal.name}" n'est pas en cours.`, 'warning');
+            return;
+        }
+
+        if (goalTimers[index]) {
+            clearInterval(goalTimers[index]); // Stop the live update interval
+            delete goalTimers[index];
+        }
+
+        const durationMs = Date.now() - goal.timerStartTime;
+        const durationSeconds = Math.floor(durationMs / 1000);
+
+        goal.totalTimeLogged += durationSeconds;
+        
+        const todayDate = getTodayDateString();
+        if (!goal.dailyTimeLogs[todayDate]) {
+            goal.dailyTimeLogs[todayDate] = 0;
+        }
+        goal.dailyTimeLogs[todayDate] += durationSeconds;
+
+        // Update overallDailyTimeLogs for the calendar view
+        if (!overallDailyTimeLogs[todayDate]) {
+            overallDailyTimeLogs[todayDate] = { totalSeconds: 0, goals: {} };
+        }
+        overallDailyTimeLogs[todayDate].totalSeconds += durationSeconds;
+        if (!overallDailyTimeLogs[todayDate].goals[goal.name]) {
+            overallDailyTimeLogs[todayDate].goals[goal.name] = 0;
+        }
+        overallDailyTimeLogs[todayDate].goals[goal.name] += durationSeconds;
+
+        goal.isTimerRunning = false;
+        goal.timerStartTime = null;
+
+        saveGoals(); // Save goal changes
+        saveOverallDailyTimeLogs(); // Save global daily logs
+        renderGoals(); // Re-render to show updated times
+        showToast(`Chronomètre arrêté pour "${goal.name}". Temps enregistré : ${formatTime(durationSeconds)}.`, 'info');
+    }
+
+
+    function renderGoals() {
+      const container = document.getElementById('goalsContainer');
+      container.innerHTML = '';
+
+      let displayedGoals = [...goals]; // Create a copy to sort/filter
+
+      // Filtering by multiple categories
+      const selectedCategories = getSelectedCategories();
+      if (selectedCategories.length > 0 && !(selectedCategories.length === 1 && selectedCategories[0] === 'all')) { // Check if 'all' is not the only selected option
+          displayedGoals = displayedGoals.filter(goal => selectedCategories.includes(goal.category));
+      }
+
+
+      // Searching
+      const searchTerm = document.getElementById('searchGoals').value.toLowerCase();
+      if (searchTerm) {
+        displayedGoals = displayedGoals.filter(goal =>
+          goal.name.toLowerCase().includes(searchTerm) ||
+          goal.category.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      // Sorting
+      const sortBy = document.getElementById('sortBy').value;
+      displayedGoals.sort((a, b) => {
+        if (sortBy === 'name') {
+          return a.name.localeCompare(b.name);
+        } else if (sortBy === 'progressAsc') {
+          // For boolean, treat completed as 1 and incomplete as 0 for sorting
+          const valA = a.type === 'numeric' ? (a.current / a.target) : (a.completed ? 1 : 0);
+          const valB = b.type === 'numeric' ? (b.current / b.target) : (b.completed ? 1 : 0);
+          return valA - valB;
+        } else if (sortBy === 'progressDesc') {
+          const valA = a.type === 'numeric' ? (a.current / a.target) : (a.completed ? 1 : 0);
+          const valB = b.type === 'numeric' ? (b.current / b.target) : (b.completed ? 1 : 0);
+          return valB - valA;
+        } else if (sortBy === 'creationDate') {
+          return new Date(a.creationDate) - new Date(b.creationDate);
+        } else if (sortBy === 'dueDate') {
+            // Treat null due dates as very late
+            const dateA = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
+            const dateB = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
+            return dateA - dateB;
+        }
+        return 0;
+      });
+
+      if (displayedGoals.length === 0) {
+        container.innerHTML = '<p class="no-goals-message">Aucun objectif à afficher selon les filtres/recherche actuels.</p>';
+        return;
+      }
+
+      displayedGoals.forEach((goal, index) => {
+        // Find original index to ensure correct deletion/update
+        const originalIndex = goals.findIndex(g => g.creationDate === goal.creationDate && g.name === goal.name);
+
+        const goalDiv = document.createElement('div');
+        goalDiv.className = 'goal';
+        goalDiv.setAttribute('data-index', originalIndex); // For confetti
+
+        let progressHtml = '';
+        let statusText = '';
+        let isCompleted = false;
+
+        if (goal.type === 'numeric') {
+            const percentage = (goal.current / goal.target) * 100;
+            isCompleted = goal.current >= goal.target;
+            statusText = isCompleted ? 'Complété !' : `${goal.current} / ${goal.target} ${goal.unit || ''} (${percentage.toFixed(1)}%)`;
+            
+            goalDiv.classList.toggle('completed-goal', isCompleted); // Add/remove completed class
+
+            progressHtml = `
+                <p>Progression: <span class="${isCompleted ? 'goal-completed-text' : ''}">${statusText}</span></p>
+                <div class="progress-bar ${isCompleted ? 'completed-bar' : ''}"><div class="progress" style="width: ${percentage}%"></div></div>
+                <label>Ajouter progression: <input type="number" id="progress-${originalIndex}"></label>
+                <button onclick="updateGoal(${originalIndex})">Mettre à jour</button>
+                <button onclick="resetGoal(${originalIndex})">Réinitialiser la progression</button>
+            `;
+        } else { // boolean
+            isCompleted = goal.completed;
+            statusText = isCompleted ? 'Complété' : 'Incomplet';
+
+            goalDiv.classList.toggle('completed-goal', isCompleted); // Add/remove completed class
+
+            progressHtml = `
+                <p>Statut: <span class="status-boolean ${isCompleted ? 'completed' : 'incomplete'}">${statusText}</span></p>
+                <label class="checkbox-container">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''} onchange="updateGoal(${originalIndex})"> Marquer comme ${isCompleted ? 'Incomplet' : 'Complet'}
+                    <span class="checkmark"></span>
+                </label>
+            `;
+        }
+
+        let dueDateHtml = '';
+        if (goal.dueDate) {
+            const due = new Date(goal.dueDate + 'T23:59:59'); // Set to end of day for calculation
+            const now = new Date();
+            const timeLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24)); // Calculate days left
+            let dueDateClass = '';
+            let dueDateText = `Échéance: ${goal.dueDate}`;
+            if (timeLeft < 0) {
+                dueDateText += ` (En retard de ${Math.abs(timeLeft)} jours)`;
+                dueDateClass = 'overdue';
+            } else if (timeLeft <= 7 && timeLeft >= 0) { // Approaching, but not overdue
+                dueDateText += ` (${timeLeft} jours restants)`;
+                dueDateClass = 'approaching-due';
+            } else {
+                 dueDateText += ` (${timeLeft} jours restants)`; // Still show days left for future dates
+            }
+            dueDateHtml = `<p class="due-date ${dueDateClass}">${dueDateText}</p>`;
+        }
+
+        // NEW: Timer display and controls
+        const todayDate = getTodayDateString();
+        const timeTodayForGoal = goal.dailyTimeLogs[todayDate] || 0;
+        const currentRunningTime = goal.isTimerRunning ? Math.floor((Date.now() - goal.timerStartTime) / 1000) : 0;
+        const displayTotalTime = formatTime(goal.totalTimeLogged);
+        const displayTimeToday = formatTime(timeTodayForGoal + currentRunningTime);
+
+        const timerControlsHtml = `
+            <div class="timer-controls">
+                <p>Temps total passé : <strong>${displayTotalTime}</strong></p>
+                <p>Temps passé aujourd'hui : <strong>${displayTimeToday}</strong> 
+                ${goal.isTimerRunning ? `<span class="current-timer-display">(En cours : ${formatTime(currentRunningTime)})</span>` : ''}</p>
+                <button onclick="startGoalTimer(${originalIndex})" ${goal.isTimerRunning ? 'disabled' : ''}>Démarrer le chronomètre</button>
+                <button onclick="stopGoalTimer(${originalIndex})" ${!goal.isTimerRunning ? 'disabled' : ''}>Arrêter le chronomètre</button>
+            </div>
+        `;
+
+        goalDiv.innerHTML = `
+          <button class="delete-goal-btn" onclick="deleteGoal(${originalIndex})">&times;</button>
+          <h3 class="${isCompleted && goal.type === 'numeric' ? 'goal-completed-text' : ''}">${goal.name} (${goal.category})</h3>
+          ${dueDateHtml}
+          ${progressHtml}
+          ${timerControlsHtml}
+          <button onclick="editGoal(${originalIndex})">Modifier l'objectif</button>
+          <button onclick="toggleHistory(${originalIndex})">Voir l'historique</button>
+          <div class="history-display" id="history-display-${originalIndex}" style="display:none;"></div>
+
+          <button onclick="toggleReminder(${originalIndex})">Voir Rappel</button>
+          <div class="reminder-section" id="reminder-content-${originalIndex}" style="display:none;">
+            <h4>Rappel</h4>
+            <label>Définir la date : <input type="date" id="reminder-date-${originalIndex}" value="${goal.reminderDate || ''}"></label>
+            <label>Définir l'heure : <input type="time" id="reminder-time-${originalIndex}" value="${goal.reminderTime || ''}"></label>
+            <button onclick="setGoalReminder(${originalIndex})">Définir le rappel</button>
+            <button onclick="clearGoalReminder(${originalIndex})">Effacer le rappel</button>
+          </div>
+        `;
+        container.appendChild(goalDiv);
+
+        // If a timer is running, re-establish its live update interval on render
+        if (goal.isTimerRunning && !goalTimers[originalIndex]) {
+            goalTimers[originalIndex] = setInterval(() => {
+                const elapsedSeconds = Math.floor((Date.now() - goal.timerStartTime) / 1000);
+                const currentGoalDiv = document.querySelector(`.goal[data-index="${originalIndex}"]`);
+                if (currentGoalDiv) {
+                    const timerDisplay = currentGoalDiv.querySelector('.current-timer-display');
+                    if (timerDisplay) {
+                        timerDisplay.textContent = `(En cours : ${formatTime(elapsedSeconds)})`;
+                    }
+                }
+            }, 1000);
+        }
+      });
+    }
+
+    function toggleHistory(index) {
+      const goal = goals[index];
+      const historyDisplay = document.getElementById(`history-display-${index}`);
+
+      if (historyDisplay.style.display === 'none') {
+        if (goal && goal.history && goal.history.length > 0) {
+          historyDisplay.innerHTML = '<h4>Historique de progression :</h4><ul>' +
+            goal.history.map(h => `<li>${h.date}: ${h.value}</li>`).join('') +
+            '</ul>';
+        } else {
+          historyDisplay.innerHTML = '<p>Aucun historique disponible pour cet objectif.</p>';
+        }
+        historyDisplay.style.display = 'block';
+      } else {
+        historyDisplay.style.display = 'none';
+        historyDisplay.innerHTML = '';
+      }
+    }
+
+    function toggleReminder(index) {
+        const reminderContent = document.getElementById(`reminder-content-${index}`);
+        if (reminderContent.style.display === 'none') {
+            reminderContent.style.display = 'block';
+        } else {
+            reminderContent.style.display = 'none';
+        }
+    }
+
+    // --- Statistics Functions ---
+    function updateStatistics() {
+        document.getElementById('totalGoals').textContent = goals.length;
+        const completed = goals.filter(goal => (goal.type === 'numeric' && goal.current >= goal.target) || (goal.type === 'boolean' && goal.completed)).length;
+        document.getElementById('completedGoals').textContent = completed;
+        document.getElementById('pendingGoals').textContent = goals.length - completed;
+
+        const goalsByCategory = {};
+        goals.forEach(goal => {
+            goalsByCategory[goal.category] = (goalsByCategory[goal.category] || 0) + 1;
+        });
+
+        const goalsByCategoryList = document.getElementById('goalsByCategory');
+        goalsByCategoryList.innerHTML = '';
+        for (const category in goalsByCategory) {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${category}: ${goalsByCategory[category]} objectifs`;
+            goalsByCategoryList.appendChild(listItem);
+        }
+
+        // NEW: Update overall time statistics
+        let totalTimeAllGoals = 0;
+        let timeSpentTodayAllGoals = 0;
+        const todayDate = getTodayDateString();
+
+        goals.forEach(goal => {
+            totalTimeAllGoals += goal.totalTimeLogged;
+            // Add current running time if timer is active
+            if (goal.isTimerRunning) {
+                totalTimeAllGoals += Math.floor((Date.now() - goal.timerStartTime) / 1000);
+            }
+
+            const dailyLogged = goal.dailyTimeLogs[todayDate] || 0;
+            timeSpentTodayAllGoals += dailyLogged;
+            if (goal.isTimerRunning) {
+                timeSpentTodayAllGoals += Math.floor((Date.now() - goal.timerStartTime) / 1000);
+            }
+        });
+
+        document.getElementById('totalTimeAllGoals').textContent = formatTime(totalTimeAllGoals);
+        document.getElementById('timeSpentTodayAllGoals').textContent = formatTime(timeSpentTodayAllGoals);
+    }
+
+    // --- Notes Functions ---
+    function loadNotes() {
+        const savedNotes = localStorage.getItem('notes');
+        if (savedNotes) {
+            notes = JSON.parse(savedNotes);
+        }
+        populateNoteCategories(); // Ensure note categories are up-to-date
+        renderNotes();
+    }
+
+    function saveNotes() {
+        localStorage.setItem('notes', JSON.stringify(notes));
+    }
+
+    function populateNoteCategories() {
+        const selectElement = document.getElementById('newNoteCategory');
+        const filterSelectElement = document.getElementById('filterNoteCategory');
+        
+        selectElement.innerHTML = '';
+        filterSelectElement.innerHTML = '<option value="all">Toutes</option>';
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            selectElement.appendChild(option);
+
+            const filterOption = document.createElement('option');
+            filterOption.value = category;
+            filterOption.textContent = category;
+            filterSelectElement.appendChild(filterOption);
+        });
+    }
+
+    function validateNoteForm() {
+        let isValid = true;
+        const titleInput = document.getElementById('newNoteTitle');
+        const titleError = document.getElementById('error-newNoteTitle');
+
+        titleError.textContent = '';
+        titleInput.classList.remove('is-invalid');
+
+        if (!titleInput.value.trim()) {
+            titleError.textContent = 'Le titre de la note ne peut pas être vide.';
+            titleInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        return isValid;
+    }
+
+    function addNote() {
+        if (!validateNoteForm()) {
+            showToast('Veuillez corriger les erreurs du formulaire de note.', 'error');
+            return;
+        }
+
+        const title = document.getElementById('newNoteTitle').value.trim();
+        const content = document.getElementById('newNoteContent').value.trim();
+        const category = document.getElementById('newNoteCategory').value;
+
+        notes.push({
+            id: Date.now(), // Simple unique ID
+            title,
+            content,
+            category,
+            creationDate: new Date().toISOString()
+        });
+        saveNotes();
+        renderNotes();
+
+        document.getElementById('newNoteTitle').value = '';
+        document.getElementById('newNoteContent').value = '';
+        document.getElementById('newNoteCategory').selectedIndex = 0;
+        showToast('Note ajoutée avec succès !', 'success');
+    }
+
+    function renderNotes() {
+        const container = document.getElementById('notesContainer');
+        container.innerHTML = '';
+
+        let displayedNotes = [...notes];
+
+        const filterCategory = document.getElementById('filterNoteCategory').value;
+        if (filterCategory !== 'all') {
+            displayedNotes = displayedNotes.filter(note => note.category === filterCategory);
+        }
+
+        const searchTerm = document.getElementById('searchNotes').value.toLowerCase();
+        if (searchTerm) {
+            displayedNotes = displayedNotes.filter(note =>
+                note.title.toLowerCase().includes(searchTerm) ||
+                note.content.toLowerCase().includes(searchTerm) ||
+                note.category.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        if (displayedNotes.length === 0) {
+            container.innerHTML = '<p class="no-notes-message">Aucune note à afficher selon les filtres/recherche actuels.</p>';
+            return;
+        }
+
+        displayedNotes.forEach(note => {
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'note';
+            noteDiv.innerHTML = `
+                <button class="delete-note-btn" onclick="deleteNote(${note.id})">&times;</button>
+                <h3>${note.title} (${note.category})</h3>
+                <p>${note.content.substring(0, 150)}${note.content.length > 150 ? '...' : ''}</p>
+                <small>Créée le: ${new Date(note.creationDate).toLocaleDateString()}</small><br>
+                <button onclick="editNote(${note.id})">Modifier la note</button>
+            `;
+            container.appendChild(noteDiv);
+        });
+    }
+
+    function editNote(id) {
+        const noteIndex = notes.findIndex(n => n.id === id);
+        if (noteIndex === -1) return;
+
+        const note = notes[noteIndex];
+        const newTitle = prompt("Entrez le nouveau titre de la note:", note.title);
+        if (newTitle !== null && newTitle.trim() !== '') {
+            note.title = newTitle.trim();
+        }
+
+        const newContent = prompt("Entrez le nouveau contenu de la note:", note.content);
+        if (newContent !== null) {
+            note.content = newContent.trim();
+        }
+
+        const newCategory = prompt("Entrez la nouvelle catégorie pour la note (actuel: " + note.category + "). Existantes: " + categories.join(', ') + " ou tapez une nouvelle:", note.category);
+        if (newCategory !== null && newCategory.trim() !== '') {
+            const trimmedCategory = newCategory.trim();
+            if (!categories.includes(trimmedCategory)) {
+                categories.push(trimmedCategory);
+                saveCategories();
+                populateCategories();
+                populateFilterCategories();
+                populateNoteCategories();
+            }
+            note.category = trimmedCategory;
+        }
+
+        saveNotes();
+        renderNotes();
+        showToast('Note mise à jour !', 'info');
+    }
+
+    function deleteNote(id) {
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+            notes = notes.filter(note => note.id !== id);
+            saveNotes();
+            renderNotes();
+            showToast('Note supprimée !', 'warning');
+        }
+    }
+
+
+    // --- Global Utility Functions ---
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      toast.textContent = message;
+      toast.className = `toast-notification ${type} show`;
+      setTimeout(() => {
+        toast.className = toast.className.replace('show', '');
+      }, 3000); // Hide after 3 seconds
+    }
+
+    function showUndoNotification(actionFunction) {
+        const undoNotification = document.getElementById('undoNotification');
+        undoNotification.className = 'undo-notification show';
+        
+        const undoButton = undoNotification.querySelector('button');
+        if (undoButton) {
+            undoButton.removeEventListener('click', confirmUndo);
+            undoButton.addEventListener('click', confirmUndo);
+        }
+
+        clearTimeout(undoTimeout);
+        undoTimeout = setTimeout(() => {
+            hideUndoNotification();
+        }, 5000); // Hide undo button after 5 seconds
+    }
+
+    function confirmUndo() {
+        if (previousGoalsState) {
+            goals = previousGoalsState;
+            saveGoals();
+            renderGoals();
+            showToast('Action annulée !', 'info');
+            hideUndoNotification();
+            previousGoalsState = null; // Clear state after undo
+        }
+    }
+
+    function hideUndoNotification() {
+        const undoNotification = document.getElementById('undoNotification');
+        undoNotification.className = 'undo-notification';
+        const undoButton = undoNotification.querySelector('button');
+        if (undoButton) {
+            undoButton.removeEventListener('click', confirmUndo); // Clean up listener
+        }
+    }
+
+    function triggerConfetti(targetElement) {
+        targetElement.classList.add('confetti-animation');
+        setTimeout(() => {
+            targetElement.classList.remove('confetti-animation');
+        }, 1500); // Match animation duration
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    }
+
+    // --- Reminder Functions ---
+    let goalReminders = {}; // Store active timeouts for reminders
+
+    function setGoalReminder(index) {
+        const goal = goals[index];
+        const reminderDateInput = document.getElementById(`reminder-date-${index}`);
+        const reminderTimeInput = document.getElementById(`reminder-time-${index}`);
+        const dateValue = reminderDateInput.value; // e.g., "YYYY-MM-DD"
+        const timeValue = reminderTimeInput.value; // e.g., "HH:MM"
+
+        if (!dateValue || !timeValue) {
+            showToast('Veuillez sélectionner une date ET une heure pour le rappel.', 'error');
+            return;
+        }
+
+        if (Notification.permission === 'denied') {
+            showToast('Permission de notification refusée. Veuillez l\'activer dans les paramètres de votre navigateur.', 'error');
+            return;
+        }
+        if (Notification.permission !== 'granted') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    setGoalReminderLogic(index, goal, dateValue, timeValue);
+                } else {
+                    showToast('Permission de notification non accordée. Impossible de définir le rappel.', 'error');
+                }
+            });
+        } else {
+            setGoalReminderLogic(index, goal, dateValue, timeValue);
+        }
+    }
+
+    function setGoalReminderLogic(index, goal, dateValue, timeValue) {
+        clearGoalReminder(index); // Clear any existing reminder for this goal
+
+        const [hours, minutes] = timeValue.split(':').map(Number);
+        const [year, month, day] = dateValue.split('-').map(Number);
+        
+        let targetDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+        const now = new Date();
+
+        // If target date/time is in the past, schedule for next occurrence (e.g., same time tomorrow/next year)
+        // For simplicity, if the chosen date is today and time is past, schedule for tomorrow.
+        // If the chosen date is in the past, reschedule for the same time on the next valid day.
+        if (targetDate.getTime() <= now.getTime()) {
+            if (targetDate.toDateString() === now.toDateString()) { // Same day, time is past
+                targetDate.setDate(targetDate.getDate() + 1);
+            } else { // Date is in the past, calculate future occurrence
+                while (targetDate.getTime() <= now.getTime()) {
+                    targetDate.setDate(targetDate.getDate() + 1); // Move to next day until it's in future
+                }
+            }
+        }
+
+        const delay = targetDate.getTime() - now.getTime();
+
+        goal.reminderTime = timeValue; // Store reminder time in goal object
+        goal.reminderDate = dateValue; // Store reminder date in goal object
+        saveGoals(); // Persist the reminder preference
+
+        const timeoutId = setTimeout(() => {
+            new Notification('Rappel Progress Tracker', {
+                body: `Il est temps de mettre à jour votre progression pour : "${goal.name}" !`,
+                icon: 'icon-192.png'
+            });
+            // After first notification, set up daily repetition for same time if it's a future date
+            // or just a one-time notification if it's a specific past-then-future date.
+            // To make it recurring, more complex logic is needed (e.g., setInterval or re-scheduling).
+            // For simplicity, clearing after one shot.
+            delete goalReminders[index]; // Remove this one-time reminder
+        }, delay);
+
+        goalReminders[index] = timeoutId; // Store the initial timeout ID
+        showToast(`Rappel défini pour "${goal.name}" le ${dateValue} à ${timeValue}.`, 'success');
+    }
+
+    function clearGoalReminder(index) {
+        if (goalReminders[index]) {
+            clearTimeout(goalReminders[index]);
+            delete goalReminders[index];
+            goals[index].reminderTime = null; // Remove reminder time from goal
+            goals[index].reminderDate = null; // Remove reminder date from goal
+            saveGoals();
+            showToast(`Rappel effacé pour "${goals[index].name}".`, 'info');
+            const reminderTimeInput = document.getElementById(`reminder-time-${index}`);
+            const reminderDateInput = document.getElementById(`reminder-date-${index}`);
+            if(reminderTimeInput) reminderTimeInput.value = ''; // Clear UI input
+            if(reminderDateInput) reminderDateInput.value = ''; // Clear UI input
+        } else {
+            showToast('Aucun rappel actif trouvé pour cet objectif.', 'warning');
+        }
+    }
+    // --- End Reminder Functions ---
+
+    // NEW: Daily Log Viewer Functions
+    function displayDailyLog() {
+        const selectedDate = document.getElementById('dailyLogDate').value;
+        const detailsDiv = document.getElementById('dailyLogDetails');
+        const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+        const totalTimeDisplay = document.getElementById('selectedDateTotalTime');
+        const goalsDetailsList = document.getElementById('selectedDateGoalsDetails');
+
+        if (!selectedDate) {
+            showToast('Veuillez sélectionner une date.', 'error');
+            detailsDiv.style.display = 'none';
+            return;
+        }
+
+        selectedDateDisplay.textContent = new Date(selectedDate).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        goalsDetailsList.innerHTML = '';
+
+        const logForDate = overallDailyTimeLogs[selectedDate];
+
+        if (logForDate) {
+            totalTimeDisplay.textContent = formatTime(logForDate.totalSeconds);
+            if (Object.keys(logForDate.goals).length > 0) {
+                for (const goalName in logForDate.goals) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${goalName}: ${formatTime(logForDate.goals[goalName])}`;
+                    goalsDetailsList.appendChild(listItem);
+                }
+            } else {
+                goalsDetailsList.innerHTML = '<li>Aucun temps enregistré pour les objectifs ce jour-là.</li>';
+            }
+            detailsDiv.style.display = 'block';
+            showToast(`Détails du temps pour le ${selectedDateDisplay.textContent} affichés.`, 'success');
+        } else {
+            totalTimeDisplay.textContent = formatTime(0);
+            goalsDetailsList.innerHTML = '<li>Aucun temps enregistré pour les objectifs ce jour-là.</li>';
+            detailsDiv.style.display = 'block';
+            showToast(`Aucun temps enregistré pour le ${selectedDateDisplay.textContent}.`, 'info');
+        }
+    }
+
+
+    function exportGoals() {
+      const dataToExport = {
+        goals: goals,
+        categories: categories,
+        notes: notes,
+        overallDailyTimeLogs: overallDailyTimeLogs // NEW: Export daily time logs
+      };
+      const data = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'progress_tracker_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Données exportées avec succès !', 'success');
+    }
+
+    function importGoals(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        showToast('Aucun fichier sélectionné pour l\'importation.', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (importedData) {
+            if (importedData.goals && Array.isArray(importedData.goals)) {
+                goals = importedData.goals;
+                // Ensure imported goals have new timer properties
+                goals.forEach(goal => {
+                    if (typeof goal.isTimerRunning === 'undefined') goal.isTimerRunning = false;
+                    if (typeof goal.timerStartTime === 'undefined') goal.timerStartTime = null;
+                    if (typeof goal.totalTimeLogged === 'undefined') goal.totalTimeLogged = 0;
+                    if (typeof goal.dailyTimeLogs === 'undefined') goal.dailyTimeLogs = {};
+                });
+            }
+            if (importedData.categories && Array.isArray(importedData.categories)) {
+                // Merge imported categories with existing ones to avoid duplicates
+                importedData.categories.forEach(cat => {
+                    if (!categories.includes(cat)) {
+                        categories.push(cat);
+                    }
+                });
+            }
+            if (importedData.notes && Array.isArray(importedData.notes)) {
+                notes = importedData.notes;
+            }
+            if (importedData.overallDailyTimeLogs) { // NEW: Import daily time logs
+                overallDailyTimeLogs = importedData.overallDailyTimeLogs;
+            }
+
+            saveGoals(); // Saves goals, implicitly updates statistics
+            saveCategories();
+            saveNotes();
+            saveOverallDailyTimeLogs(); // Save imported daily logs
+
+            populateCategories();
+            populateFilterCategories();
+            populateNoteCategories();
+            renderGoals();
+            renderNotes();
+            updateStatistics();
+            showToast('Données importées avec succès !', 'success');
+          }
+        } catch (error) {
+          showToast('Erreur lors de l\'importation des données : ' + error.message, 'error');
+          console.error('Import error:', error);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function toggleGoalTypeFields() {
+        const goalType = document.getElementById('newGoalType').value;
+        const numericFields = document.getElementById('numericGoalFields');
+        if (goalType === 'numeric') {
+            numericFields.style.display = 'block';
+        } else {
+            numericFields.style.display = 'none';
+        }
+    }
+
+
+    // Initial setup on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadGoals(); // Load goals and categories, renders goals, updates stats
+        loadNotes(); // Load notes and render them (even if not visible)
+        toggleGoalTypeFields(); // Set initial visibility for goal type fields
+
+        // Load dark mode preference
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+        
+        // Show goals view by default and set active button
+        showView('goalsView'); 
+    });
+
+
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(registration => {
+            console.log('Service Worker registered with scope:', registration.scope);
+          })
+          .catch(error => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
